@@ -70,10 +70,10 @@ class Environment:
         return cube
 
     def xy_to_rowcol(self, pos: Tuple[float, float]) -> Tuple[int, int]:
-        return int(round(pos[0] / self.resolution)), int(round(pos[1] / self.resolution))
+        return int(round((pos[0] - self.resolution / 2) / self.resolution)), int(round((pos[1] - self.resolution / 2) / self.resolution))
 
     def rowcol_to_xy(self, rowcol: Tuple[int, int]) -> Tuple[float, float]:
-        return (rowcol[0] * self.resolution, rowcol[1] * self.resolution)
+        return (rowcol[0] * self.resolution + self.resolution / 2, rowcol[1] * self.resolution + self.resolution / 2)
 
     def step(self, delta: Tuple[int, int]) -> None:
         """
