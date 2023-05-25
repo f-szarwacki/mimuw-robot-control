@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+#Franciszek Szarwacki
+
 import json
 import numpy as np
 import pybullet as p
@@ -22,7 +24,54 @@ N_TESTS = len(FIXED_TEST_CASES) + 10  # ten random test cases
 
 def execute_control(filler_id, robot_id, target_xy):
     # EDIT ONLY BELOW THIS LINE
-    pass
+    filler_position, filler_ort = p.getBasePositionAndOrientation(filler_id)
+    robot_position, robot_ort = p.getBasePositionAndOrientation(robot_id)
+
+    gripper_state = p.getLinkState(robot_id, 2)
+    gripper_ort = gripper_state[1]
+
+    _, _, z1 = p.getEulerFromQuaternion(filler_ort)
+    _, _, z2 = p.getEulerFromQuaternion(gripper_ort)
+
+    # Start with rotation.
+    angle_difference = z1 - math.pi / 2
+    p.setJointMotorControl2(
+            bodyIndex=robot_id,
+            jointIndex=2,
+            controlMode=p.POSITION_CONTROL,
+            targetPosition=math.pi / 2 - (z1 - z2),
+            targetVelocity=0,
+            positionGain=5,
+            velocityGain=10,
+            force=3
+    )
+    
+    difference_1 = filler_position[1] - target_xy[1]
+    p.setJointMotorControl2(
+        bodyIndex=robot_id,
+        jointIndex=0,
+        controlMode=p.POSITION_CONTROL,
+        targetPosition=target_xy[1],
+        targetVelocity=0,
+        velocityGain=10,
+        force=3
+    )
+
+    if abs(difference_1) < 0.003 and abs(angle_difference) < 0.02:
+        # If we have good x and angle start moving in y.
+        difference_2 = filler_position[0] - target_xy[0]
+        if abs(difference_2) > 0.01:
+            p.setJointMotorControl2(
+                bodyIndex=robot_id,
+                jointIndex=1,
+                controlMode=p.POSITION_CONTROL,
+                targetPosition=target_xy[0],
+                targetVelocity=0,
+                velocityGain=15,
+                force=3
+            )
+            
+    
     # EDIT ONLY ABOVE THIS LINE
 
 
