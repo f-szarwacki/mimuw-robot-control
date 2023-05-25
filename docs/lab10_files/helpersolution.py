@@ -120,7 +120,7 @@ The remaining derivatives are trivially either 0 or 1.
 class Solution1:
     # Keep this signature unchanged for automated testing!
     # Reminder: implementing arbitrary target_pos is not required, but please try!
-    def __init__(self, init_state, target_pos):
+    def __init__(self, init_state, target_pos, Q=None, R=None):
         params = {
             'gravity': 9.8,
             'mass_cart': 1,
@@ -129,13 +129,8 @@ class Solution1:
             'mu_pole': 0.001,
         }
         self.A, self.B = linearize(**params)
-        # Q and R have been found by grid searching parameters, evaluating mean
-        # steps and efforts on test set: (start_pos, start_angle) \in {-1.5, -1.0, 1.0} x {-0.7, -0.5, 0.3, 0.8}
-        self.Q = np.array([[1.   , 0.   , 0.   , 0.   ],
-            [0.   , 0.25 , 0.   , 0.   ],
-            [0.   , 0.   , 2.   , 0.   ],
-            [0.   , 0.   , 0.   , 0.025]])
-        self.R = 0.000125 * np.eye(1)
+        self.Q = 20 * np.eye(4) if Q is None else Q
+        self.R = np.eye(1) if R is None else R
 
         self.K, _, _ = control.lqr(self.A, self.B, self.Q, self.R)
         
@@ -150,7 +145,7 @@ class Solution1:
 class Solution2:
     # Keep this signature unchanged for automated testing!
     # Reminder: implementing arbitrary target_pos is not required, but please try!
-    def __init__(self, init_state, target_pos):
+    def __init__(self, init_state, target_pos, Q=None, R=None):
         params = {
             'gravity': 9.8,
             'mass_cart': 1,
@@ -159,13 +154,8 @@ class Solution2:
             'mu_pole': 0.001,
         }
         self.A, self.B = linearize(**params)
-        # Q and R have been found by grid searching parameters, evaluating mean
-        # steps and efforts on test set: (start_pos, start_angle) \in {-1.5, -1.0, 1.0} x {-0.7, -0.5, 0.3, 0.8}
-        self.Q = np.array([[1.  , 0.  , 0.  , 0.  ],
-            [0.  , 0.25, 0.  , 0.  ],
-            [0.  , 0.  , 1.  , 0.  ],
-            [0.  , 0.  , 0.  , 0.05]])
-        self.R = 0.005 * np.eye(1)
+        self.Q = np.eye(4) if Q is None else Q
+        self.R = 10 * np.eye(1) if R is None else R
 
         self.K, _, _ = control.lqr(self.A, self.B, self.Q, self.R)
 

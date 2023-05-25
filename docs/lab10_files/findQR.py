@@ -5,7 +5,9 @@ import pybullet as p
 import pybullet_data
 import time
 
-import solution
+import numpy as np
+
+import helpersolution as solution
 
 LINK_CART = 0
 LINK_POLE = 1
@@ -21,7 +23,7 @@ POLE_FRICTION_COEF = 0.001
 
 class Simulation:
     def __init__(self):
-        p.connect(p.GUI, options="--width=1920 --height=1080")
+        p.connect(p.DIRECT, options="--width=1920 --height=1080")
         print(p.resetDebugVisualizerCamera(3.5, 90, -25, [0, 0, 0]))
 
         p.setGravity(0, 0, -9.8)
@@ -134,10 +136,8 @@ class Simulation:
             p.stepSimulation()
             time.sleep(TIME_STEP_S)
 
-    def test_solution(self, target=0):
+    def test_solution(self, sol, target=0):
         # Create an instance of Solution
-        sol = solution.Solution1(self.get_state(), target)
-
         steps = 0
         total_effort = 0
         total_effort_sqr = 0
@@ -164,18 +164,18 @@ class Simulation:
 
             # Check for acceptance
             if self.stable_pos(target) and self.stable_angle(target):
-                print(f"Accepting {self.get_state()}")
+                #print(f"Accepting {self.get_state()}")
                 return True, steps, total_effort, total_effort_sqr
 
         # Timeout occured
         return False, None, None, None
 
-    def test_case(self, start_pos, start_angle, target, silent=False):
+    def test_case(self, start_pos, start_angle, sol, target=0, silent=True):
         self.msg("SETUP")
         self.setup_state(start_pos, start_angle)
 
         self.msg("TESTING")
-        ret = self.test_solution(target)
+        ret = self.test_solution(sol, target)
 
         if not silent:
             if ret[0]:
@@ -188,13 +188,28 @@ class Simulation:
 
         return ret
 
-import numpy as np
-def random_tests(sim, N=10):
-    for _ in range(N):
-        pos = np.random.uniform(-2, 2)
-        angle = np.random.uniform(-0.6, 0.6)
-        sim.test_case(pos, angle, 0)
 
+def get_performance(sim, sol):
+    list_steps = []
+    list_effort = []
+
+    start_pos_choices = [-1.5, -1.0, 1.0]
+    start_angle_choices = [-0.7, -0.5, 0.3, 0.8]
+
+    print(f"-------------------------\nQ=\n{sol.Q}, \nR={sol.R}:")
+    
+    for start_pos in start_pos_choices:
+        for start_angle in start_angle_choices:
+            accepted, steps, effort, _ = sim.test_case(start_pos, start_angle, sol, silent=True)
+            if not accepted:
+                print("TIMEOUT. Breaking.")
+                return None, None
+            list_steps.append(steps)
+            list_effort.append(effort)
+
+    print(f"Performance for {sol.__class__.__name__} with Q=\n{sol.Q}, \nR={sol.R}:")
+    print(f"Mean steps: {np.mean(list_steps)}; Mean effort: {np.mean(list_effort)}")
+    return np.mean(list_steps), np.mean(list_effort)
 
 def main():
     sim = Simulation()
@@ -205,24 +220,39 @@ def main():
     # NOTICE: It is not required to support targets other than (0,0,0,0)
     # ... but you are encouraged to implement arbitrary target position setting!
     
-    #sim.test_case(-1.5, -0.4, 0)
-    #sim.test_case(-1.0, -0.5, 0)
-    sim.test_case(-1.0, -0.6, 0)
-    sim.test_case(-0.8, -0.7, 0)
-    sim.test_case(-0.8, -0.8, 0)
-    sim.test_case(-0.8, -0.9, 0)
-    sim.test_case(-0.8, -1.0, 0)
+    from itertools import product
 
-
-
-
-    sim.test_case(0.1, 0.03, 0)
-    sim.test_case(1, 0, 0)
-    sim.test_case(-1.5, -0.4, 0)
-    sim.test_case(1.5, -1, 0)
-
+    best_sol1 = (1000000, (None, None))
+    best_sol2 = (1000000, (None, None))
+    for i, j, k in product([1, 0.5, 2.], repeat=3):
+        Q = np.array([[1., 0., 0., 0.],
+                [0., j * 0.25, 0., 0.],
+                [0., 0., i * 2, 0.],
+                [0., 0., 0., j * 0.025]])
+        R = k * 0.00025 * np.eye(1)
+        sol = solution.Solution1(sim.get_state(), 0, Q=Q, R=R)
+        steps, effort = get_performance(sim, sol)
+        if steps < best_sol1[0]:
+            best_sol1 = (steps, (Q, R))
+        if effort < best_sol2[0]:
+            best_sol2 = (effort, (Q, R))
     
+    print("BEST SO FAR:\n", best_sol1, best_sol2)
 
+    for i, j, k in product([1, 0.5, 2.], repeat=3):
+        Q = np.array([[1.0, 0., 0., 0.],
+                [0., j * 0.25, 0., 0.],
+                [0., 0., i * 1, 0.],
+                [0., 0., 0., j * 0.05]])
+        R = k * 0.005 * np.eye(1)
+        sol = solution.Solution1(sim.get_state(), 0, Q=Q, R=R)
+        steps, effort = get_performance(sim, sol)
+        if steps < best_sol1[0]:
+            best_sol1 = (steps, (Q, R))
+        if effort < best_sol2[0]:
+            best_sol2 = (effort, (Q, R))
+
+    print("BEST SO FAR:\n", best_sol1, best_sol2)
 
 if __name__ == "__main__":
     main()
